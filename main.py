@@ -3,44 +3,42 @@ import cv2
 import numpy as np
 import av
 from streamlit_webrtc import webrtc_streamer
+import mediapipe as mp
 
-# This try/except block helps us see if the library is actually there
-try:
-    import mediapipe as mp
-    mp_face_detection = mp.solutions.face_detection
-    face_detection = mp_face_detection.FaceDetection(model_selection=0, min_detection_confidence=0.5)
-    st.success("MediaPipe loaded successfully!")
-except AttributeError:
-    st.error("MediaPipe is installed, but couldn't find 'solutions'. Check your file names!")
-except ImportError:
-    st.error("MediaPipe is NOT installed. Check requirements.txt!")
+# Setup MediaPipe outside the loop for speed
+mp_faces = mp.solutions.face_detection
+face_detector = mp_faces.FaceDetection(model_selection=0, min_detection_confidence=0.5)
+
+st.title("👹 Monster Detector")
+st.write("If the camera doesn't start, check the 'lock' icon in your browser bar.")
 
 def video_frame_callback(frame):
     img = frame.to_ndarray(format="bgr24")
     
-    # Convert to RGB for MediaPipe
+    # 1. Convert to RGB (MediaPipe requirement)
     img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    results = face_detection.process(img_rgb)
+    
+    # 2. Process
+    results = face_detector.process(img_rgb)
 
+    # 3. Draw if a "Monster" (Human) is found
     if results.detections:
         for detection in results.detections:
-            # Get bounding box
             bboxC = detection.location_data.relative_bounding_box
-            ih, iw, ic = img.shape
+            ih, iw, _ = img.shape
             x, y, w, h = int(bboxC.left_px * iw), int(bboxC.top_px * ih), \
                          int(bboxC.width_px * iw), int(bboxC.height_px * ih)
             
-            # For "Specific Person" recognition, we normally compare 
-            # feature vectors here. For now, let's draw the stable detection.
-            color = (0, 255, 0) # Green
-            cv2.rectangle(img, (x, y), (x + w, y + h), color, 2)
-            cv2.putText(img, "Face Detected", (x, y - 10), 
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+            # Green box for the monster
+            cv2.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 3)
+            cv2.putText(img, "MONSTER FOUND", (x, y - 10), 
+                        cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
     return av.VideoFrame.from_ndarray(img, format="bgr24")
 
 webrtc_streamer(
-    key="mediapipe-filter",
+    key="monster-detector",
     video_frame_callback=video_frame_callback,
+    rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
     media_stream_constraints={"video": True, "audio": False},
 )
