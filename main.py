@@ -1,15 +1,19 @@
 import streamlit as st
 import cv2
-import mediapipe as mp
 import numpy as np
 import av
 from streamlit_webrtc import webrtc_streamer
 
-st.title("Fast Face ID (MediaPipe)")
-
-# Initialize MediaPipe Face Detection
-mp_face_detection = mp.solutions.face_detection
-face_detection = mp_face_detection.FaceDetection(model_selection=0, min_detection_confidence=0.5)
+# This try/except block helps us see if the library is actually there
+try:
+    import mediapipe as mp
+    mp_face_detection = mp.solutions.face_detection
+    face_detection = mp_face_detection.FaceDetection(model_selection=0, min_detection_confidence=0.5)
+    st.success("MediaPipe loaded successfully!")
+except AttributeError:
+    st.error("MediaPipe is installed, but couldn't find 'solutions'. Check your file names!")
+except ImportError:
+    st.error("MediaPipe is NOT installed. Check requirements.txt!")
 
 def video_frame_callback(frame):
     img = frame.to_ndarray(format="bgr24")
