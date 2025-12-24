@@ -30,8 +30,10 @@ def train_on_me():
 
 trained = train_on_me()
 
-if not trained:
-    st.error("Upload a clear photo of yourself named 'me.jpg' to your GitHub repo!")
+if trained:
+    st.sidebar.success("✅ Reference photo loaded!")
+else:
+    st.sidebar.error("❌ Could not find a face in 'me.jpg'. Try a clearer photo.")
 
 def video_frame_callback(frame):
     img = frame.to_ndarray(format="bgr24")
