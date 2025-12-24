@@ -6,8 +6,8 @@ from streamlit_webrtc import webrtc_streamer, VideoProcessorBase
 import os
 
 # --- SETTINGS ---
-st.set_page_config(page_title="AI Face ID", page_icon="👤")
-st.title("👤 Secure Person Detector")
+st.set_page_config(page_title="Monster Detector", page_icon="👤")
+st.title("👤 Monster Detector")
 
 @st.cache_resource
 def load_and_train():
@@ -61,9 +61,9 @@ class FaceIDProcessor(VideoProcessorBase):
                 
                 # ADJUST THIS: Since your baseline is 120, we set threshold to 140
                 if id_ == 1 and confidence < 140:
-                    label, color = "OWNER", (0, 255, 0)
+                    label, color = "Monster", (0, 255, 0)
                 else:
-                    label, color = "STRANGER", (0, 0, 255)
+                    label, color = "Not monster", (0, 0, 255)
                 
                 # Draw Box and Text
                 cv2.rectangle(img, (x_up, y_up), (x_up+w_up, y_up+h_up), color, 2)
@@ -74,7 +74,6 @@ class FaceIDProcessor(VideoProcessorBase):
 
 if model_ready:
     st.sidebar.success("✅ Model Trained on 'me.jpg'")
-    st.sidebar.info("If it stays 'Stranger', increase the threshold in the code (current: 140).")
 else:
     st.error("Missing 'me.jpg'! Upload it to GitHub and refresh.")
 
