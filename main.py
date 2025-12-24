@@ -53,8 +53,8 @@ def video_frame_callback(frame):
         try:
             id_, confidence = recognizer.predict(roi_gray)
             
-            if id_ == 1 and confidence < 75:
-                label = f"Owner ({int(confidence)})"
+            if id_ == 1 and confidence < 110:
+                label = f"Owner (Match: {int(100 - (confidence/1.5))}%)"
                 color = (0, 255, 0)
             else:
                 label = "Stranger"
