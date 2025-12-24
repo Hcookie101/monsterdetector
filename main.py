@@ -94,11 +94,22 @@ if model_ready:
     st.sidebar.success(f"✅ Trained on {len(os.listdir('my_faces')) if os.path.exists('my_faces') else 1} images")
 else:
     st.error("Upload images to 'my_faces' folder or 'me.jpg' to GitHub.")
-
 webrtc_streamer(
     key="monster-detector-pro",
     video_processor_factory=FaceIDProcessor,
     async_processing=True,
-    rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
+    # ADD THIS SECTION:
+    rtc_configuration={
+        "iceServers": [
+            {"urls": ["stun:stun.l.google.com:19302"]}, 
+            {"urls": ["stun:stun1.l.google.com:19302"]},
+            # Public TURN server to bypass firewalls
+            {
+                "urls": ["turn:relay.metered.ca:443"],
+                "username": "openrelayproject",
+                "credential": "openrelayproject"
+            }
+        ]
+    },
     media_stream_constraints={"video": True, "audio": False},
 )
