@@ -79,7 +79,7 @@ class FaceIDProcessor(VideoProcessorBase):
                 # We'll stick to 130 as a safe 'Monster' threshold.
                 dist_text = f"Dist: {int(confidence)}"
                 
-                if id_ == 1 and confidence < 130:
+                if id_ == 1 and confidence <1:
                     label, color = "Monster", (0, 255, 0)
                 else:
                     label, color = "Not monster", (0, 0, 255)
