@@ -35,54 +35,57 @@ if trained:
 else:
     st.sidebar.error("❌ Could not find a face in 'me.jpg'. Try a clearer photo.")
 
+if "frame_count" not in st.session_state:
+    st.session_state.frame_count = 0
+
 def video_frame_callback(frame):
+    st.session_state.frame_count += 1
     img = frame.to_ndarray(format="bgr24")
-    small_img = cv2.resize(img, (0, 0), fx=0.25, fy=0.25)
-    gray_small = cv2.cvtColor(small_img, cv2.COLOR_BGR2GRAY)
     
-    faces = face_cascade.detectMultiScale(gray_small, 1.1, 5)
+    # ONLY process every 5th frame to prevent CPU overload
+    if st.session_state.frame_count % 5 != 0:
+        return av.VideoFrame.from_ndarray(img, format="bgr24")
+
+    # Lower resolution for calculation
+    small_img = cv2.resize(img, (0, 0), fx=0.2, fy=0.2)
+    gray = cv2.cvtColor(small_img, cv2.COLOR_BGR2GRAY)
+    
+    faces = face_cascade.detectMultiScale(gray, 1.2, 4)
 
     for (x, y, w, h) in faces:
-        x_orig, y_orig, w_orig, h_orig = x*4, y*4, w*4, h*4
-        roi_gray = gray_small[y:y+h, x:x+w]
+        # Scale coords back up (5x because fx=0.2)
+        x_up, y_up, w_up, h_up = x*5, y*5, w*5, h*5
+        roi = gray[y:y+h, x:x+w]
         
         try:
-            # The 'confidence' score is returned here
-            id_, confidence = recognizer.predict(roi_gray)
+            # The Recognizer is the heavy part - we wrap it in safety
+            id_, conf = recognizer.predict(roi)
             
-            # DEBUG: Show the confidence number to help us tune it
-            # If this number is 120, and our limit is 110, it stays "Scanning"
-            debug_text = f"Dist: {int(confidence)}"
-            
-            # Increase threshold to 140 to be much more forgiving
-            if id_ == 1 and confidence < 140:
-                label = "Owner Identified"
-                color = (0, 255, 0)
+            if id_ == 1 and conf < 150:
+                label, color = "OWNER", (0, 255, 0)
             else:
-                label = "Scanning..."
-                color = (255, 255, 255)
-        except:
-            label = "Error"
-            color = (0, 0, 255)
-
-        cv2.rectangle(img, (x_orig, y_orig), (x_orig + w_orig, y_orig + h_orig), color, 2)
-        cv2.putText(img, label, (x_orig, y_orig - 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, color, 2)
-        cv2.putText(img, debug_text, (x_orig, y_orig - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 1)
+                label, color = "SCANNING", (255, 255, 255)
+                
+            cv2.rectangle(img, (x_up, y_up), (x_up+w_up, y_up+h_up), color, 2)
+            cv2.putText(img, f"{label} ({int(conf)})", (x_up, y_up-10), 
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2)
+        except Exception:
+            continue # If math fails, just skip to the next frame
 
     return av.VideoFrame.from_ndarray(img, format="bgr24")
 
 webrtc_streamer(
-    key="person-id",
+    key="monster-v3", # Changing the key forces a fresh connection
     video_frame_callback=video_frame_callback,
-    # This part is CRITICAL for mobile data/phones:
-    rtc_configuration={
-        "iceServers": [
-            {"urls": ["stun:stun.l.google.com:19302"]},
-            {"urls": ["stun:stun1.l.google.com:19302"]}
-        ]
-    },
+    # Lower bitrate and resolution for phones
     media_stream_constraints={
-        "video": {"width": {"ideal": 640}, "height": {"ideal": 480}},
+        "video": {
+            "width": {"ideal": 480},
+            "height": {"ideal": 360},
+            "frameRate": {"ideal": 10} # 10 FPS is plenty for detection
+        },
         "audio": False
-    }
+    },
+    async_processing=True,
+    rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]}
 )
