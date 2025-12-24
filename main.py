@@ -37,37 +37,37 @@ else:
 
 def video_frame_callback(frame):
     img = frame.to_ndarray(format="bgr24")
-    
-    # STEP 1: Create a tiny version of the image for faster processing
-    # Processing a 480p image is much faster than 1080p
     small_img = cv2.resize(img, (0, 0), fx=0.25, fy=0.25)
     gray_small = cv2.cvtColor(small_img, cv2.COLOR_BGR2GRAY)
     
-    # STEP 2: Detect faces on the SMALL image
     faces = face_cascade.detectMultiScale(gray_small, 1.1, 5)
 
     for (x, y, w, h) in faces:
-        # Scale the coordinates back UP to match the original big image
         x_orig, y_orig, w_orig, h_orig = x*4, y*4, w*4, h*4
-        
         roi_gray = gray_small[y:y+h, x:x+w]
         
         try:
+            # The 'confidence' score is returned here
             id_, confidence = recognizer.predict(roi_gray)
             
-            if id_ == 1 and confidence < 110:
-                label = f"Owner (Match: {int(100 - (confidence/1.5))}%)"
+            # DEBUG: Show the confidence number to help us tune it
+            # If this number is 120, and our limit is 110, it stays "Scanning"
+            debug_text = f"Dist: {int(confidence)}"
+            
+            # Increase threshold to 140 to be much more forgiving
+            if id_ == 1 and confidence < 140:
+                label = "Owner Identified"
                 color = (0, 255, 0)
             else:
-                label = "Stranger"
-                color = (0, 0, 255)
+                label = "Scanning..."
+                color = (255, 255, 255)
         except:
-            label = "Scanning..."
-            color = (255, 255, 255)
+            label = "Error"
+            color = (0, 0, 255)
 
-        # Draw on the ORIGINAL high-quality image
         cv2.rectangle(img, (x_orig, y_orig), (x_orig + w_orig, y_orig + h_orig), color, 2)
-        cv2.putText(img, label, (x_orig, y_orig - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, color, 2)
+        cv2.putText(img, label, (x_orig, y_orig - 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, color, 2)
+        cv2.putText(img, debug_text, (x_orig, y_orig - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 1)
 
     return av.VideoFrame.from_ndarray(img, format="bgr24")
 
