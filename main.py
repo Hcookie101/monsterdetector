@@ -35,25 +35,37 @@ if not trained:
 
 def video_frame_callback(frame):
     img = frame.to_ndarray(format="bgr24")
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    faces = face_cascade.detectMultiScale(gray, 1.1, 5)
+    
+    # STEP 1: Create a tiny version of the image for faster processing
+    # Processing a 480p image is much faster than 1080p
+    small_img = cv2.resize(img, (0, 0), fx=0.25, fy=0.25)
+    gray_small = cv2.cvtColor(small_img, cv2.COLOR_BGR2GRAY)
+    
+    # STEP 2: Detect faces on the SMALL image
+    faces = face_cascade.detectMultiScale(gray_small, 1.1, 5)
 
     for (x, y, w, h) in faces:
-        roi_gray = gray[y:y+h, x:x+w]
+        # Scale the coordinates back UP to match the original big image
+        x_orig, y_orig, w_orig, h_orig = x*4, y*4, w*4, h*4
         
-        # Predict who it is
-        id_, confidence = recognizer.predict(roi_gray)
+        roi_gray = gray_small[y:y+h, x:x+w]
         
-        # Confidence: Lower is better for LBPH
-        if id_ == 1 and confidence < 80:
-            label = "Owner (Access Granted)"
-            color = (0, 255, 0) # Green
-        else:
-            label = "Stranger (Access Denied)"
-            color = (0, 0, 255) # Red
+        try:
+            id_, confidence = recognizer.predict(roi_gray)
+            
+            if id_ == 1 and confidence < 75:
+                label = f"Owner ({int(confidence)})"
+                color = (0, 255, 0)
+            else:
+                label = "Stranger"
+                color = (0, 0, 255)
+        except:
+            label = "Scanning..."
+            color = (255, 255, 255)
 
-        cv2.rectangle(img, (x, y), (x + w, y + h), color, 2)
-        cv2.putText(img, label, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, color, 2)
+        # Draw on the ORIGINAL high-quality image
+        cv2.rectangle(img, (x_orig, y_orig), (x_orig + w_orig, y_orig + h_orig), color, 2)
+        cv2.putText(img, label, (x_orig, y_orig - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, color, 2)
 
     return av.VideoFrame.from_ndarray(img, format="bgr24")
 
@@ -68,7 +80,7 @@ webrtc_streamer(
         ]
     },
     media_stream_constraints={
-        "video": True, 
+        "video": {"width": {"ideal": 640}, "height": {"ideal": 480}},
         "audio": False
-    },
+    }
 )
