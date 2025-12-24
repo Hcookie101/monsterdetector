@@ -69,7 +69,7 @@ class FaceIDProcessor(VideoProcessorBase):
                 id_, confidence = recognizer.predict(roi)
                 
                 # 2. Determine the label and color
-                if id_ == 1 and confidence < 95:
+                if id_ == 1 and confidence < 135:
                     label = "OWNER"
                     color = (0, 255, 0)
                 else:
