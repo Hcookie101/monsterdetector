@@ -58,25 +58,34 @@ class FaceIDProcessor(VideoProcessorBase):
 
         for (x, y, w, h) in faces:
             # Scale coordinates back up
-            x, y, w, h = x*2, y*2, w*2, h*2
+            x_up, y_up, w_up, h_up = x*2, y*2, w*2, h*2
             
             if model_ready:
                 roi = gray[y:y+h, x:x+w]
                 roi = cv2.resize(roi, (200, 200))
                 roi = cv2.equalizeHist(roi)
                 
+                # 1. Get the ID and the raw distance (Dist)
                 id_, confidence = recognizer.predict(roi)
                 
-                # TIGHT THRESHOLD: Lower is stricter. 100 is a good middle ground.
+                # 2. Determine the label and color
                 if id_ == 1 and confidence < 95:
-                    label = f"OWNER ({int(100 - (confidence/1.5))}%)"
-                    color = (0, 255, 0) # Green
+                    label = "OWNER"
+                    color = (0, 255, 0)
                 else:
                     label = "UNKNOWN"
-                    color = (0, 0, 255) # Red
+                    color = (0, 0, 255)
                 
-                cv2.rectangle(img, (x, y), (x+w, y+h), color, 2)
-                cv2.putText(img, label, (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, color, 2)
+                # 3. PRINT "DIST" ON SCREEN (The new line)
+                # This puts the raw distance number right under the label
+                dist_text = f"Dist: {int(confidence)}"
+                
+                # Draw Box
+                cv2.rectangle(img, (x_up, y_up), (x_up+w_up, y_up+h_up), color, 2)
+                # Draw Label (OWNER/UNKNOWN)
+                cv2.putText(img, label, (x_up, y_up-30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, color, 2)
+                # Draw Distance value
+                cv2.putText(img, dist_text, (x_up, y_up-10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 0), 1)
 
         return av.VideoFrame.from_ndarray(img, format="bgr24")
 
